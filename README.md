@@ -6,7 +6,7 @@ starting with upstream / exploration and production (E&P) companies.
 
 Phase 0 created the development environment. Phase 1 adds a centralized FMP
 client and an EOG connectivity check. Phase 1B adds a separate WRDS access probe
-to determine whether the user's Clemson WRDS account can supply historical
+to determine whether my WRDS account can supply historical
 financial data. FMP remains in place. This is an explicitly authorized feasibility
 check, not a permanent change to the master specification's provider hierarchy.
 There is no standardized company schema,
