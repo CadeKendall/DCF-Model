@@ -1,0 +1,4 @@
+# Use Python 3.12 in .venv-wrds; WRDS 3.5 requires pandas < 2.3.
+-r requirements.txt
+wrds==3.5.0
+pandas==2.2.3

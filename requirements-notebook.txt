@@ -1,0 +1,5 @@
+# Notebook exploration dependencies; includes the existing FMP client dependencies.
+-r requirements.txt
+jupyterlab
+ipykernel
+pandas

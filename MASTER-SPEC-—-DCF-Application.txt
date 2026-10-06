@@ -1,0 +1,339 @@
+# DCF APPLICATION MASTER SPECIFICATION
+
+## Objective
+
+Build a reusable interactive valuation and research application for publicly traded energy companies.
+
+The application should eventually allow the user to enter a ticker and produce a company-specific operating forecast and DCF without rebuilding the core valuation engine.
+
+## Initial Scope
+
+Version 1 focuses on U.S. publicly traded upstream / E&P companies.
+
+Future modules may support:
+
+- Integrated Oil & Gas
+- Midstream
+- Refining
+- Oilfield Services
+- LNG / Gas Infrastructure
+- Other Energy
+
+## Technology
+
+Backend:
+Python
+
+Primary financial-data API:
+Financial Modeling Prep
+
+Regulatory data:
+SEC EDGAR
+
+Database:
+SQLite initially
+
+Application API:
+FastAPI
+
+Frontend:
+HTML / CSS / JavaScript
+
+Research / prototyping:
+Jupyter notebooks where useful
+
+Development:
+Codex should be used for substantial codebase implementation and testing.
+
+## Architecture
+
+Data Sources
+→ Data Retrieval
+→ Raw Data
+→ Data Normalization
+→ Local Database / Cache
+→ Energy Operating Model
+→ Financial Forecast
+→ UFCF
+→ WACC
+→ DCF
+→ Enterprise-to-Equity Bridge
+→ Sensitivities / Scenarios
+→ Application API
+→ Interactive Frontend
+
+Each layer should remain modular.
+
+## Financial Data
+
+Standardize at least:
+
+### Company information
+- ticker
+- company name
+- exchange
+- currency
+- fiscal year end
+- sector
+- industry
+- company type
+
+### Market data
+- share price
+- market capitalization
+- diluted shares
+- beta
+
+### Income statement
+- revenue
+- operating expenses
+- EBITDA
+- D&A
+- EBIT
+- interest
+- pre-tax income
+- taxes
+- net income
+
+### Balance sheet
+- cash
+- receivables
+- inventory
+- PP&E
+- short-term debt
+- long-term debt
+- total debt
+- total assets
+- liabilities
+- equity
+
+### Cash flow
+- operating cash flow
+- D&A
+- stock compensation
+- working capital changes
+- capex
+- acquisitions
+- asset sales
+- financing activity
+
+## Upstream Operating Data
+
+Where available:
+
+- oil production
+- gas production
+- NGL production
+- total production
+- realized oil price
+- realized gas price
+- realized NGL price
+- oil differential
+- gas differential
+- LOE
+- transportation
+- production taxes
+- exploration expense
+- G&A
+- capex
+- reserves
+- development activity
+
+Missing information should be represented as unavailable, not automatically set to zero.
+
+## Forecast Engine
+
+Default explicit forecast period:
+5 years
+
+Forecast drivers should use operating economics where possible.
+
+Example upstream logic:
+
+Oil production
+× realized oil price
+= oil revenue
+
+Gas production
+× realized gas price
+= gas revenue
+
+NGL production
+× realized NGL price
+= NGL revenue
+
+Then calculate operating expenses, EBITDA, D&A, EBIT, taxes, capex, working capital, and UFCF.
+
+## UFCF
+
+EBIT
+× (1 - tax rate)
+= NOPAT
+
+NOPAT
++ D&A
+- Capex
+- Change in NWC
+= UFCF
+
+## WACC
+
+Cost of Equity:
+
+Risk-Free Rate
++ Beta × Equity Risk Premium
+
+After-Tax Cost of Debt:
+
+Pre-Tax Cost of Debt
+× (1 - Tax Rate)
+
+WACC:
+
+Equity Weight × Cost of Equity
++
+Debt Weight × After-Tax Cost of Debt
+
+Every material WACC component should remain visible and editable.
+
+## Terminal Value
+
+Support:
+
+Perpetuity Growth Method
+
+and
+
+Exit Multiple Method.
+
+Require:
+
+WACC > Terminal Growth Rate
+
+## Valuation
+
+PV of Explicit UFCF
++
+PV of Terminal Value
+=
+Enterprise Value
+
+Enterprise Value
+- Debt
++ Cash
+- Preferred Equity
+- Minority Interest
++/- valid adjustments
+=
+Equity Value
+
+Equity Value
+/
+Diluted Shares
+=
+Implied Share Price
+
+## Scenarios
+
+Support:
+
+- Bear
+- Base
+- Bull
+- Custom
+
+Potential scenario variables:
+
+- commodity prices
+- production
+- operating costs
+- capex
+- WACC
+- terminal growth
+- terminal multiple
+
+All scenarios use the same underlying calculation engine.
+
+## Sensitivities
+
+At minimum:
+
+- WACC × Terminal Growth
+- WACC × Exit Multiple
+- WTI × WACC
+
+Additional upstream sensitivities may be added later.
+
+## Data Sources
+
+FMP:
+Primary standardized data source.
+
+SEC:
+Authoritative filing and disclosure source where appropriate.
+
+Preserve source metadata including:
+
+- provider
+- reporting period
+- retrieval timestamp
+- units
+- original value
+- normalized value
+- filing reference where applicable
+
+Never fabricate unavailable values.
+
+## Data Refresh Philosophy
+
+Market price:
+Daily initially.
+
+Commodity prices:
+Daily initially.
+
+Financial statements:
+Update when new reported information becomes available.
+
+Operating metrics:
+Update following new company disclosures.
+
+Reserves:
+Update when reported.
+
+DCF:
+Recalculate immediately when assumptions change.
+
+## V1 Success Criteria
+
+V1 succeeds when the user can:
+
+1. Run the application locally.
+2. Enter an upstream company ticker.
+3. Retrieve fundamental data.
+4. View historical financial information.
+5. View source/freshness information.
+6. Generate a five-year forecast.
+7. Calculate UFCF.
+8. Calculate WACC.
+9. Calculate both terminal values.
+10. Calculate enterprise value.
+11. Calculate equity value.
+12. Calculate implied share price.
+13. Modify valuation assumptions.
+14. Recalculate dynamically.
+15. View sensitivity analysis.
+16. Switch scenarios.
+17. See model warnings and errors.
+
+## Core Principle
+
+We are not building a single-company DCF.
+
+We are building a reusable:
+
+Company Data
+→ Operating Model
+→ Forecast
+→ Valuation Engine
+→ Interactive Research Application

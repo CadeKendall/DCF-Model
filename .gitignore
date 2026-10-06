@@ -1,0 +1,40 @@
+# Local environments and secrets
+.venv/
+.venv-wrds/
+venv/
+.env
+.env.*
+!.env.example
+
+# WRDS/PostgreSQL credential files must never enter Git
+.pgpass
+.pgpass.*
+pgpass.conf
+pgpass.conf.*
+.pg_service.conf
+pg_service.conf
+
+# Python-generated files and test caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+.coverage
+htmlcov/
+
+# Raw provider responses and retrieval metadata (local inspection only)
+data/raw/
+
+# Local databases (including SQLite journal files)
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+desktop.ini
