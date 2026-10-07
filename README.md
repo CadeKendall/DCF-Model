@@ -52,7 +52,7 @@ From PowerShell, install the notebook dependencies into the existing project
 environment and launch JupyterLab:
 
 ```powershell
-Set-Location 'C:\Users\cadec\OneDrive\Documents\DCF-Model'
+Set-Location 'C:\Users\'USERNAME"\OneDrive\Documents\DCF-Model'
 .\.venv\Scripts\python.exe -m pip install -r requirements-notebook.txt
 .\.venv\Scripts\python.exe -m jupyter lab
 ```
@@ -111,7 +111,7 @@ again to use the existing environment.
 2. Copy this command, paste it into PowerShell, and press **Enter**:
 
    ```powershell
-   Set-Location 'C:\Users\cadec\OneDrive\Documents\DCF-Model'
+   Set-Location 'C:\Users\"USERNAME"\OneDrive\Documents\DCF-Model'
    ```
 
 3. Run each of the following commands separately, pressing **Enter** after each:
@@ -388,7 +388,7 @@ list the account's libraries, and test access before making that determination.
 Open your own PowerShell window and run these commands one at a time:
 
 ```powershell
-Set-Location 'C:\Users\cadec\OneDrive\Documents\DCF-Model'
+Set-Location 'C:\Users\"USERNAME"\OneDrive\Documents\DCF-Model'
 .\.venv-wrds\Scripts\python.exe -m app.verify_wrds
 ```
 
@@ -397,7 +397,7 @@ command from the project folder. The leading `&` tells PowerShell to run the
 quoted executable path:
 
 ```powershell
-& "C:\Users\cadec\OneDrive\Documents\DCF-Model\.venv-wrds\Scripts\python.exe" -m app.verify_wrds
+& "C:\Users\"USERNAME"\OneDrive\Documents\DCF-Model\.venv-wrds\Scripts\python.exe" -m app.verify_wrds
 ```
 
 At the standard WRDS prompts:
@@ -506,7 +506,7 @@ responses, never credentials or live WRDS queries. Running tests in the original
 there because WRDS is installed only in `.venv-wrds`.
 
 The local environment was created with the existing Python 3.12.14 bundled at
-`C:\Users\cadec\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`.
+`C:\Users\"USERNAME"\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`.
 For a fresh setup on another computer with Python 3.12 installed, run:
 
 ```powershell
