@@ -9,8 +9,9 @@ client and an EOG connectivity check. Phase 1B adds a separate WRDS access probe
 to determine whether my WRDS account can supply historical
 financial data. FMP remains in place. This is an explicitly authorized feasibility
 check, not a permanent change to the master specification's provider hierarchy.
-There is no standardized company schema,
-database persistence, SEC integration, valuation model, web server, or frontend.
+The research notebook now adds annual financial normalization and an optional
+SEC company-facts adapter. There is no database persistence, valuation model,
+web server, or frontend.
 
 Project instructions are in `CODEX_INSTRUCTIONS.md`. The authoritative master
 specification is `MASTER-SPEC-—-DCF-Application.txt`, as designated by the user.
@@ -35,16 +36,17 @@ Ignore `MASTER_SPEC.md`; no Markdown duplicate is needed.
 - Git tracks changes locally once you make commits. Initializing Git does not
   upload files or create a GitHub repository.
 
-Financial normalization, SEC EDGAR ingestion, FastAPI, Uvicorn, HTML, CSS, and
-JavaScript work is deferred until an appropriate later phase.
+The historical research pipeline is described below. FastAPI, Uvicorn, HTML,
+CSS, JavaScript, and valuation work remain deferred.
 
 ## Explore EOG financials in Jupyter
 
-The `notebooks/` folder contains `EOG_Financials.ipynb` for organizing EOG's
-five years of WRDS/Compustat statements into a historical table, calculating
-selected historical ratios, and listing follow-up E&P operating data. It leaves
-unavailable source values blank and does not forecast or calculate a DCF. FMP
-returned HTTP 402 for the annual statement endpoint on the configured account.
+Open `notebooks/EOG_Dynamic.ipynb` for a configurable rolling annual window,
+standardized WRDS or SEC financials, source audits, ratios, and debt/NWC
+diagnostics. The prior root-level `EOG_Financials.ipynb` remains a static research
+snapshot. FMP returned HTTP 402 for the configured annual statement endpoint.
+Existing E&P observations are joined by year; new operating disclosures are
+not automatically retrieved and future missing values remain blank.
 
 From PowerShell, install the notebook dependencies into the existing project
 environment and launch JupyterLab:
@@ -55,11 +57,12 @@ Set-Location 'C:\Users\cadec\OneDrive\Documents\DCF-Model'
 .\.venv\Scripts\python.exe -m jupyter lab
 ```
 
-In JupyterLab, open `notebooks/EOG_Financials.ipynb` and choose **Run All**.
-It reads the newest saved WRDS report under `data/raw/wrds/` and displays the
-raw records and provider field descriptions. To refresh the report, use
-`.\.venv-wrds\Scripts\python.exe -m app.verify_wrds` from PowerShell, complete
-the WRDS sign-in and Duo prompts there, then rerun the report-loading cell.
+In JupyterLab, open `notebooks/EOG_Dynamic.ipynb` and choose **Run All**.
+It defaults to the newest saved WRDS report for the selected ticker. Refresh
+expanded inputs with `.\.venv-wrds\Scripts\python.exe -m app.refresh_wrds --ticker EOG --years 6`,
+complete the WRDS sign-in/Duo prompts, and rerun the notebook. Six records
+support five displayed years and an opening year for changes. For SEC setup,
+source definitions, and remaining automation limits, see `notebooks/README.md`.
 
 ## Folder structure
 

@@ -20,6 +20,8 @@ FIELDS = (
     "indfmt", "datafmt", "consol", "popsrc", "sale", "revt", "oiadp",
     "oibdp", "ni", "che", "at", "dlc", "dltt", "ppent", "dp", "dpc",
     "capx", "oancf", "csho", "cshfd",
+    "rect", "invt", "ap", "act", "lct", "lt", "seq", "pi", "txt",
+    "xint", "xopr", "ivncf", "fincf", "aqc", "sppe", "txdb",
 )
 FILTERS = {"indfmt": "INDL", "datafmt": "STD", "consol": "C", "popsrc": "D"}
 RELEVANT_PREFIXES = (
@@ -190,6 +192,12 @@ class WRDSClient:
         }
 
     def retrieve_eog(self, inventory: dict, limit: int = 5) -> dict:
+        return self.retrieve_annual(inventory, ticker="EOG", limit=limit)
+
+    def retrieve_annual(self, inventory: dict, ticker: str = "EOG", limit: int = 6) -> dict:
+        ticker = ticker.strip().upper()
+        if not re.fullmatch(r"[A-Z0-9][A-Z0-9.-]{0,14}", ticker):
+            raise WRDSError("Invalid ticker; query was not sent.")
         if type(limit) is not int or not 1 <= limit <= 10:
             raise WRDSError("Sample limit must be an integer from 1 to 10.")
         # Full North America candidates only. Sample/global libraries remain
@@ -205,7 +213,7 @@ class WRDSClient:
         available_empty = None
         for schema in candidates:
             try:
-                result = self._annual_sample(schema, inventory["tables_by_library"][schema], "EOG", limit)
+                result = self._annual_sample(schema, inventory["tables_by_library"][schema], ticker, limit)
                 attempts.append({"table": f"{schema}.funda", "status": result["status"]})
                 if result["status"] == "available":
                     return {**result, "attempts": attempts}
@@ -225,11 +233,11 @@ class WRDSClient:
         }
 
 
-def save_report(inventory: dict, sample: dict, root: Path = RAW_ROOT) -> Path:
+def save_report(inventory: dict, sample: dict, root: Path = RAW_ROOT, ticker: str = "EOG") -> Path:
     stamp = datetime.now(timezone.utc)
     directory = root / f"{stamp:%Y%m%dT%H%M%S%fZ}_{uuid4().hex[:8]}"
     report = {
-        "provider": "WRDS", "retrieved_at_utc": stamp.isoformat(), "test_ticker": "EOG",
+        "provider": "WRDS", "retrieved_at_utc": stamp.isoformat(), "test_ticker": ticker,
         "inventory": inventory, "compustat": sample,
         "serialization": "Provider field names unchanged; Decimal/date/type metadata serialized as strings, SQL missing values as null.",
     }
