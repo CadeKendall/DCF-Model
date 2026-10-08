@@ -36,11 +36,14 @@ SEC_FIELDS = {
     "interest_expense": (("InterestExpenseNonOperating",), "duration", "USD"),
     "operating_cash_flow": (("NetCashProvidedByUsedInOperatingActivities",), "duration", "USD"),
     "capex": (("PaymentsToAcquirePropertyPlantAndEquipment",), "duration", "USD"),
-    "capex_oil_gas": (("PaymentsToAcquireOilAndGasProperty",), "duration", "USD"),
+    # The shorter ...OilAndGasProperty tag covers mineral interests only.
+    # It cannot replace property AND equipment spending in this bridge.
+    "capex_oil_gas": (("PaymentsToAcquireOilAndGasPropertyAndEquipment",), "duration", "USD"),
     "capex_other_ppe": (("PaymentsToAcquireOtherPropertyPlantAndEquipment",), "duration", "USD"),
     "cash": (("CashAndCashEquivalentsAtCarryingValue",), "instant", "USD"),
     "diluted_shares": (("WeightedAverageNumberOfDilutedSharesOutstanding",), "duration", "shares"),
     "receivables": (("AccountsReceivableNetCurrent",), "instant", "USD"),
+    "income_taxes_receivable": (("IncomeTaxesReceivable",), "instant", "USD"),
     "inventory": (("InventoryNet",), "instant", "USD"),
     "accounts_payable": (("AccountsPayableCurrent",), "instant", "USD"),
     "debt_current": (("LongTermDebtCurrent",), "instant", "USD"),
@@ -51,10 +54,23 @@ SEC_FIELDS = {
     "finance_leases_noncurrent": (("FinanceLeaseLiabilityNoncurrent",), "instant", "USD"),
     "assets": (("Assets",), "instant", "USD"),
     "liabilities": (("Liabilities",), "instant", "USD"),
+    "liabilities_current": (("LiabilitiesCurrent",), "instant", "USD"),
+    "other_liabilities_noncurrent": (("OtherLiabilitiesNoncurrent",), "instant", "USD"),
+    "deferred_tax_liabilities": (("DeferredIncomeTaxLiabilitiesNet",), "instant", "USD"),
     "equity": (("StockholdersEquity",), "instant", "USD"),
     "ppe": (("PropertyPlantAndEquipmentNet",), "instant", "USD"),
     "acquisitions": (("PaymentsToAcquireBusinessesNetOfCashAcquired",), "duration", "USD"),
     "asset_sales": (("ProceedsFromSaleOfPropertyPlantAndEquipment",), "duration", "USD"),
+}
+
+# Filing-reviewed company mappings. These are concept names, not financial
+# values. Keep EOG's presentation choices from silently applying to other firms.
+SEC_COMPANY_FIELDS = {
+    821189: {
+        "operating_expenses": (("CostsAndExpenses",), "duration", "USD"),
+        "interest_expense": (("InterestExpense",), "duration", "USD"),
+        "asset_sales": (("ProceedsFromSaleOfOilAndGasPropertyAndEquipment",), "duration", "USD"),
+    },
 }
 
 
@@ -134,6 +150,7 @@ def _eligible(fact, kind, end, as_of):
 def normalize_sec(payload, as_of):
     company = payload["companyfacts"]
     concepts = company["facts"]["us-gaap"]
+    fields = {**SEC_FIELDS, **SEC_COMPANY_FIELDS.get(int(company["cik"]), {})}
     # Use the fact's actual reporting period, NEVER the filing's 'fy' field.
     # A later filing labels comparative prior-year facts with its own FY.
     anchors = concepts.get("NetIncomeLoss", {}).get("units", {}).get("USD", [])
@@ -146,7 +163,7 @@ def normalize_sec(payload, as_of):
         year_ends[year] = end
     rows = []
     for year, end in year_ends.items():
-        for metric, (tags, kind, unit) in SEC_FIELDS.items():
+        for metric, (tags, kind, unit) in fields.items():
             candidates = [dict(f, tag=tag) for tag in tags
                           for f in concepts.get(tag, {}).get("units", {}).get(unit, [])
                           if _eligible(f, kind, end, as_of)]
@@ -217,13 +234,21 @@ def load_history(ticker="EOG", years=5, *, provider="wrds", cik=None,
         if metric not in data:
             data[metric] = float("nan")
     if provider == "sec":
-        # Sum only when both components exist. Missing is never zero.
-        fallback = data["capex_oil_gas"] + data["capex_other_ppe"]
-        for y in data.index[data["capex"].isna() & fallback.notna()]:
-            data.loc[y, "capex"] = fallback.loc[y]
-            audit = pd.concat([audit, pd.DataFrame([dict(year=y, metric="capex", value=fallback.loc[y],
-                source_field="capex_oil_gas + capex_other_ppe", status="calculated; inspect component sources",
-                units="USD millions", provider="SEC", retrieved_at_utc=payload["retrieved_at_utc"])])], ignore_index=True)
+        # Sum only when every component exists. Missing is never zero.
+        fallbacks = {"capex": ["capex_oil_gas", "capex_other_ppe"]}
+        if int(payload["companyfacts"]["cik"]) == 821189:
+            # EOG's balance sheet lists these four liability groups without a
+            # tagged total. Reconstruct from independent reported components,
+            # not assets minus equity, so the accounting check remains useful.
+            fallbacks["liabilities"] = ["liabilities_current", "debt_noncurrent",
+                                        "other_liabilities_noncurrent", "deferred_tax_liabilities"]
+        for metric, components in fallbacks.items():
+            fallback = data[components].sum(axis=1, min_count=len(components))
+            for y in data.index[data[metric].isna() & fallback.notna()]:
+                data.loc[y, metric] = fallback.loc[y]
+                audit = pd.concat([audit, pd.DataFrame([dict(year=y, metric=metric, value=fallback.loc[y],
+                    source_field=" + ".join(components), status="calculated; inspect component sources",
+                    units="USD millions", provider="SEC", retrieved_at_utc=payload["retrieved_at_utc"])])], ignore_index=True)
     formulas = {
         "ebitda": ("ebit + dd_a", lambda d: d.ebit + d.dd_a),
         "total_debt": ("debt_current + debt_noncurrent (provider definition)", lambda d: d.debt_current + d.debt_noncurrent),

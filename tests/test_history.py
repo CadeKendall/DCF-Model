@@ -150,7 +150,8 @@ def test_sec_download_cache_and_identity_validation(tmp_path, monkeypatch):
 def test_sec_capex_components_require_both_values(tmp_path):
     facts = {
         "NetIncomeLoss": {"units": {"USD": [sec_fact(2_000_000)]}},
-        "PaymentsToAcquireOilAndGasProperty": {"units": {"USD": [sec_fact(3_000_000)]}},
+        "PaymentsToAcquireOilAndGasPropertyAndEquipment": {"units": {"USD": [sec_fact(3_000_000)]}},
+        "PaymentsToAcquireOilAndGasProperty": {"units": {"USD": [sec_fact(200_000)]}},
         "PaymentsToAcquireOtherPropertyPlantAndEquipment": {"units": {"USD": [sec_fact(1_000_000)]}},
     }
     payload = sec_payload(facts)
@@ -163,3 +164,45 @@ def test_sec_capex_components_require_both_values(tmp_path):
     path.write_text(json.dumps(payload))
     result = load_history("TEST", 1, provider="sec", cik=1, root=tmp_path, as_of=date(2025, 3, 1))
     assert pd.isna(result.annual.loc[2024, "capex"])
+
+
+def test_mineral_interest_purchases_are_not_total_oil_gas_capex():
+    payload = sec_payload({
+        "NetIncomeLoss": {"units": {"USD": [sec_fact(2_000_000)]}},
+        "PaymentsToAcquireOilAndGasProperty": {"units": {"USD": [sec_fact(200_000)]}},
+    })
+    rows = normalize_sec(payload, date(2025, 3, 1))
+    assert pd.isna(next(r for r in rows if r["metric"] == "capex_oil_gas")["value"])
+
+
+def test_eog_reviewed_concepts_do_not_apply_to_other_companies():
+    payload = sec_payload({
+        "NetIncomeLoss": {"units": {"USD": [sec_fact(2_000_000)]}},
+        "CostsAndExpenses": {"units": {"USD": [sec_fact(8_000_000)]}},
+        "InterestExpense": {"units": {"USD": [sec_fact(100_000)]}},
+    })
+    generic = pd.DataFrame(normalize_sec(payload, date(2025, 3, 1))).set_index("metric")
+    assert pd.isna(generic.loc["operating_expenses", "value"])
+    payload["companyfacts"]["cik"] = 821189
+    eog = pd.DataFrame(normalize_sec(payload, date(2025, 3, 1))).set_index("metric")
+    assert eog.loc["operating_expenses", "value"] == 8
+    assert eog.loc["interest_expense", "value"] == 0.1
+
+
+def test_eog_liabilities_use_reported_components_not_balance_sheet_plug(tmp_path):
+    tags = {"NetIncomeLoss": {"units": {"USD": [sec_fact(2_000_000)]}}}
+    for tag, value in [("LiabilitiesCurrent", 4), ("LongTermDebtNoncurrent", 3),
+                       ("OtherLiabilitiesNoncurrent", 2), ("DeferredIncomeTaxLiabilitiesNet", 1)]:
+        tags[tag] = {"units": {"USD": [sec_fact(value * 1_000_000, start=None)]}}
+    payload = sec_payload(tags)
+    payload["companyfacts"]["cik"] = 821189
+    payload["submissions"] = dict(cik=821189, tickers=["EOG"])
+    path = tmp_path / "data/raw/sec/0000821189/one/companyfacts.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(payload))
+    result = load_history("EOG", 1, provider="sec", cik=821189, root=tmp_path, as_of=date(2025, 3, 1))
+    assert result.annual.loc[2024, "liabilities"] == 10
+    del tags["OtherLiabilitiesNoncurrent"]
+    path.write_text(json.dumps(payload))
+    result = load_history("EOG", 1, provider="sec", cik=821189, root=tmp_path, as_of=date(2025, 3, 1))
+    assert pd.isna(result.annual.loc[2024, "liabilities"])

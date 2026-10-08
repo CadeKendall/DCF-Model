@@ -18,7 +18,7 @@ Set-Location 'C:\Users\cadec\OneDrive\Documents\DCF-Model'
 - `TICKER = "EOG"`: company to load.
 - `HISTORY_YEARS = 5`: displayed annual periods.
 - `END_YEAR = None`: end at the newest annual period in the source; set a year for an earlier window.
-- `FINANCIAL_SOURCE = "wrds"`: saved WRDS extract. Set `"sec"` for standard SEC XBRL facts. No silent provider substitution.
+- `FINANCIAL_SOURCE = "sec"`: cached SEC XBRL facts. Set `"wrds"` for the saved WRDS extract. No silent provider substitution.
 - `SEC_CIK = "0000821189"`: EOG's identifier; change with ticker for SEC.
 - `REFRESH_SEC = False`: use cache. True downloads a new SEC snapshot.
 
@@ -63,15 +63,50 @@ See the [SEC API documentation](https://www.sec.gov/search-filings/edgar-applica
 
 ## Automation limits
 
+Section 9 builds the historical oil/condensate, gas and NGL revenue model from
+daily production times days in the year times realized price, with explicit unit
+conversion and leap-year handling. Its separate `revenue_disclosures` table
+automatically extracts production and composite realized prices from supported
+EOG annual filing tables, plus reported sales and other revenue components from
+inline XBRL. It does not overwrite the earlier operating reference dataset.
+
+`REFRESH_REVENUE_FILINGS = False` uses saved documents. After refreshing SEC
+metadata, set it to `True` once to download documents for a new window, then return
+it to `False`. The loader uses comparative years to reduce required downloads.
+All components for a year come from one selected filing; a comparison with the
+separate SEC annual revenue series exposes total-revenue differences.
+
+The model retains calculated-versus-reported sales differences, estimates a
+bound from published rounding precision, and separately reconciles reported
+upstream sales plus marketing, derivatives, disposition gains/losses and other
+items to total revenue. Marketing costs remain visible. These are historical
+reconstructions, not future production or price assumptions.
+
+Section 8 retrieves the selected fiscal year's annual filing document and extracts
+EOG acquisition disclosures from inline XBRL, including transaction dimensions.
+It builds an acquisition cash/NWC bridge, a candidate G&A expense adjustment,
+and a table of acquired contributions and unaudited pro forma disclosures.
+Amounts and dates come from filing tags, not notebook constants.
+
+`REFRESH_FILING = False` reads the separately saved HTML document. Set it to `True`
+once when a newly selected annual filing is not cached, then return it to `False`.
+Refresh SEC metadata first to discover new filings. Cached runs need no network.
+This adapter supports the observed EOG disclosure structure; unsupported mappings
+remain unavailable. The bridge does not finalize operating NWC or estimate organic
+production. Allocations are as disclosed in the annual report, may be preliminary,
+and do not incorporate subsequent quarterly measurement-period revisions.
+
 Financial year selection, normalization, ratios, debt/NWC diagnostics, source comparison,
 and descriptive trends are dynamic. WRDS refresh requires interactive sign-in; SEC refresh
 runs from the notebook after local configuration.
 
 Existing operating observations are preserved in `data/reference/eog_operating_history.json`
 by ticker/year/metric, with units, definitions, and source links. New production, price,
-reserve, and WTI observations are **not automatically downloaded**. Future years stay blank
-until new reviewed records are added or a dedicated source adapter is implemented.
-Moving those values out of code does not automate their retrieval.
+reserve, and WTI observations are **not automatically downloaded into that earlier
+reference table**. Its future years stay blank until new reviewed records are added.
+Section 9 independently retrieves the six commodity production/price inputs for
+its revenue model; reserves, unit costs and other operating metrics still need
+separate source work.
 
 Debt scope is provider-specific. NWC is an AR + inventory - AP proxy; acquisition balances,
 capital-related payables, and omitted current accounts need review before UFCF.
