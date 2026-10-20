@@ -63,6 +63,37 @@ See the [SEC API documentation](https://www.sec.gov/search-filings/edgar-applica
 
 ## Automation limits
 
+Section 11 extracts tax and cash-flow disclosures and rebuilds CFO from net
+income with explicit sign conversions. It separates current/deferred/other tax
+expense from cash taxes; disclosed tax-credit purchases are memo items already
+included in cash taxes in the reviewed source.
+
+The existing capex field is the sum of the property-addition lines before the
+separately presented investing working-capital contribution. Section 11 displays
+both bases, acquisitions, asset sales and other investing payments, and rebuilds
+investing cash flow from every disclosed line. Unknown new investing lines stop
+that reconciliation. Absent categories remain blank, not invented zeros.
+
+`REFRESH_CASHFLOW_FILINGS = False` uses saved documents. Refresh SEC metadata
+before setting this to `True` once for a new window, then return it to `False`.
+Working-capital views retain their signs and different scopes. CFO less property
+spending is a historical diagnostic, not DCF UFCF. The next forward-assumptions
+table must choose operating taxes, reinvestment and NWC definitions explicitly.
+
+Section 10 retrieves historical operating-cost lines from the same annual filing
+selection as revenue. It reconciles detailed expenses, operating income (the
+model's EBIT basis), and calculated EBITDA = operating income + DD&A. Older
+separate gathering/processing and transportation lines are combined only where
+the combined GP&T line is unavailable; the audit records the derivation.
+
+`REFRESH_COST_FILINGS = False` uses saved documents. Refresh SEC metadata before
+using `True` once for a new window, then return it to `False`. Costs per Boe use
+production calculated from the filing's rounded daily commodity volumes and
+actual days in each year. These are historical diagnostics, not automatically
+accepted forecast rates. EBITDA retains impairments and other noncash items;
+it is not adjusted EBITDA or cash flow. Taxes, capex and operating working-capital
+definitions still need review before the cash-flow forecast.
+
 Section 9 builds the historical oil/condensate, gas and NGL revenue model from
 daily production times days in the year times realized price, with explicit unit
 conversion and leap-year handling. Its separate `revenue_disclosures` table
@@ -105,7 +136,8 @@ by ticker/year/metric, with units, definitions, and source links. New production
 reserve, and WTI observations are **not automatically downloaded into that earlier
 reference table**. Its future years stay blank until new reviewed records are added.
 Section 9 independently retrieves the six commodity production/price inputs for
-its revenue model; reserves, unit costs and other operating metrics still need
+its revenue model. Section 10 retrieves operating expenses and calculates cost
+intensities independently; reserves and other unsupported metrics still need
 separate source work.
 
 Debt scope is provider-specific. NWC is an AR + inventory - AP proxy; acquisition balances,

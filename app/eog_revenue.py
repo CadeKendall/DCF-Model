@@ -59,8 +59,13 @@ def _decimal(text):
         raise SECError(f"Unsupported numeric disclosure: {text!r}.") from None
 
 
-def read_revenue_filing(document, metadata):
+def read_revenue_filing(document, metadata, *, extra_financial_tags=None):
     """Return value-level audit rows; preserve published precision and dates."""
+    mapping = dict(FINANCIAL_TAGS)
+    for key, metric in (extra_financial_tags or {}).items():
+        if key in mapping and mapping[key] != metric:
+            raise ValueError(f"Conflicting financial mapping for {key}.")
+        mapping[key] = metric
     if str(metadata["cik"]).zfill(10) != "0000821189":
         raise SECError("The revenue disclosure adapter currently supports EOG only.")
     try:
@@ -97,7 +102,7 @@ def read_revenue_filing(document, metadata):
             continue
         year, start, end, member = context
         tag = element.attrib.get("name")
-        metric = FINANCIAL_TAGS.get((tag, member))
+        metric = mapping.get((tag, member))
         if metric is None:
             continue
         if units.get(element.attrib.get("unitRef")) != ["iso4217:USD"]:
@@ -184,7 +189,7 @@ def read_revenue_filing(document, metadata):
     return audit.sort_values("half_rounding_unit").drop_duplicates(keys).sort_values(keys).reset_index(drop=True)
 
 
-def load_revenue_history(years, *, cik, ticker, refresh=False, root=PROJECT_ROOT):
+def load_revenue_history(years, *, cik, ticker, refresh=False, root=PROJECT_ROOT, extra_financial_tags=None):
     """Use each filing's comparative years, then fetch earlier filings as needed.
 
     All metrics for a year come from one filing, chosen newest report first.
@@ -203,14 +208,14 @@ def load_revenue_history(years, *, cik, ticker, refresh=False, root=PROJECT_ROOT
         if year not in remaining:
             continue
         document, metadata, _ = load_annual_filing(cik, ticker, year, refresh=refresh, root=root)
-        facts = read_revenue_filing(document, metadata)
+        facts = read_revenue_filing(document, metadata, extra_financial_tags=extra_financial_tags)
         covered = set(facts.loc[facts.metric.eq("reported_revenue"), "year"]) & remaining
         if year not in covered:
             raise SECError(f"FY{year} filing lacks a supported consolidated revenue fact.")
         packets.append(facts[facts.year.isin(covered)])
         remaining -= covered
     audit = pd.concat(packets, ignore_index=True)
-    fields = FINANCIAL_FIELDS + OPERATING_FIELDS
+    fields = list(dict.fromkeys(FINANCIAL_FIELDS + OPERATING_FIELDS + list((extra_financial_tags or {}).values())))
     data = audit.pivot(index="year", columns="metric", values="value").reindex(index=requested, columns=fields)
     precision = audit.pivot(index="year", columns="metric", values="half_rounding_unit").reindex(index=requested, columns=fields)
     data.columns.name = precision.columns.name = None

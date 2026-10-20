@@ -1,5 +1,90 @@
 # DCF Model — Phase 1 / 1B: Data Connectivity
 
+## Tiger Capital: notebook cost-of-capital dashboard
+
+The standalone `capital_app.py` launcher adds the requested front end for
+`Cost_of_Capital_p1_fixed.ipynb`. It preserves that notebook's WRDS/CRSP,
+Compustat, FRED, CAPM, and WACC methodology as a separate research app. This
+does not replace the main project's FMP provider hierarchy or implement a DCF.
+The older phase descriptions below describe the existing research pipeline.
+
+From PowerShell in this project folder:
+
+```powershell
+Set-Location 'C:\Users\cadec\OneDrive\Documents\DCF-Model'
+.\.venv-wrds\Scripts\python.exe -m pip install -r requirements-capital.txt
+.\.venv-wrds\Scripts\python.exe capital_app.py
+```
+
+Complete the normal WRDS sign-in / Duo prompts in PowerShell. Your browser opens
+at **http://127.0.0.1:8000**. Keep that PowerShell window open while using the app;
+press **Ctrl+C** to stop it. Credentials never go through the web form. A WRDS
+account with access to `crsp_a_stock.dsf`, `crsp_a_stock.dsenames`, and `comp.funda`
+is required for financial analysis. If sign-in fails, the app still opens with
+an explicit disconnected state. Restart the launcher to sign in again.
+
+For the interface and ZIP-code weather without WRDS sign-in:
+
+```powershell
+.\.venv-wrds\Scripts\python.exe capital_app.py --preview
+```
+
+Preview mode contains **no simulated financial results**. Use `--port 8001` if
+port 8000 is already occupied, or `--no-browser` to open the URL yourself.
+For a fresh checkout, first create `.venv-wrds` with Python 3.12:
+`py -3.12 -m venv .venv-wrds`, then run the installation command above.
+
+The app includes ticker and inclusive start/end date inputs, a SPY/QQQ/VOO
+dropdown, the 21% corporate-tax checkbox, optional fiscal year, a Clemson-inspired
+orange/purple design with an original vector paw watermark, repeated scroll
+fade-in/fade-out effects, reduced-motion support, dark mode, a cumulative-return
+chart, source/input inspection, and JSON/CSV downloads. Five-digit U.S. ZIP
+weather uses Zippopotam.us and Open-Meteo independently of financial analysis;
+it shows current modeled conditions, not weather for the historical return window.
+Google Fonts is optional; local font fallbacks keep the app usable offline.
+
+Calculation details and deliberate safeguards:
+
+- Beta uses at least 30 overlapping valid daily returns. The annualized market
+  return uses all valid proxy returns in the requested window, as in the notebook.
+- The latest valid FRED DGS10 observation within 45 days on or before the end
+  date supplies the risk-free rate. An observation over seven days old is flagged.
+- A blank fiscal year selects the latest annual financial period ending by the
+  return-window end. For the original WMT example, explicitly enter **2024**:
+  that financial period ends in January 2025 even though the notebook's return
+  window ends in December 2024. The app flags this look-ahead mismatch.
+- Compustat period end is not a filing date. Restated financials are not a
+  point-in-time backtest. Fiscal-year-end debt and equity remain the notebook's
+  weighting inputs; they are not current market capitalization.
+- Interest expense / average debt, taxes / pretax income, and price × shares
+  reproduce the notebook formulas. Dollar amounts are USD millions. The 21%
+  checkbox replaces the tax rate in WACC; the calculated rate remains visible.
+- Missing values are not fabricated. Unlike the notebook's partial debt sum,
+  both debt components are required. Missing prior-year debt uses current debt
+  with a warning. Zero average debt is rejected. Non-USD statements and ambiguous
+  security/company matches are rejected. Effective tax rates are never clipped.
+- The provider identifies one CRSP PERMNO for the ticker/window and retrieves
+  that security's history. Compustat identity is resolved separately by ticker;
+  this is not a CRSP–Compustat link-table or survivorship-free research pipeline.
+- This local app uses read-only, parameterized WRDS queries and existing secure
+  WRDS terminal authentication. It binds only to localhost.
+
+Files: `capital_app.py` (launcher/API), `app/capital_model.py` (formulas),
+`app/capital_data.py` (providers), `app/capital_static/` (HTML/CSS/JS/paw),
+`requirements-capital.txt` (dependencies), and `tests/test_capital.py` (offline tests).
+
+Run the focused tests:
+
+```powershell
+.\.venv-wrds\Scripts\python.exe -m pytest tests/test_capital.py -q
+```
+
+API references: [FastAPI static files](https://fastapi.tiangolo.com/tutorial/static-files/),
+[WRDS client](https://github.com/wharton/wrds/blob/main/wrds/sql.py),
+[FRED DGS10](https://fred.stlouisfed.org/series/DGS10),
+[Open-Meteo weather API](https://open-meteo.com/en/docs), and
+[Zippopotam.us](https://api.zippopotam.us/).
+
 This repository contains the development foundation for a future interactive
 discounted cash flow (DCF) application for publicly traded energy companies,
 starting with upstream / exploration and production (E&P) companies.
