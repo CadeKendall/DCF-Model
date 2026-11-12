@@ -61,6 +61,32 @@ Compustat uses its own fiscal-year field. Non-calendar fiscal calendars need car
 Only explicit standard concepts are mapped. Custom tags and absent concepts remain unavailable.
 See the [SEC API documentation](https://www.sec.gov/search-filings/edgar-application-programming-interfaces).
 
+## Forward model: Sections 12-16
+
+Sections 12-16 build the forecast and valuation on top of the historical sections:
+
+- **12** forward assumptions table: nine reported months of 2026 (Q3 earnings release tables), verified Q4/FY2026 guidance, the EIA STEO price deck and the editable selections in `data/assumptions/EOG_assumptions.json`.
+- **13** FY2026E-FY2031E operating forecast and unlevered free cash flow.
+- **14** WACC (10-year Treasury, Damodaran industry beta and implied ERP, EOG's cost of debt).
+- **15** perpetuity and exit-multiple terminal values, enterprise value, equity bridge, implied share price.
+- **16** Bear/Base/Bull/Custom scenarios, sensitivity grids and model warnings.
+
+Edit assumptions in `data/assumptions/EOG_assumptions.json`, then rerun Sections 12-16. Each driver is either a number with a written rationale or a named rule (guidance midpoint, STEO price, five-year historical median). `"status": "Decision needed"` stops the forecast until a value is chosen.
+
+Filed guidance is in `data/reference/eog_guidance.json`. EOG printed its Q4/FY2026 guidance table as an image: those values were transcribed manually and the code checks the image's SHA-256, not the numbers. Quoted 10-Q sentences are matched word-for-word in the cached filing.
+
+New refresh flags in Section 12 (all `False` for cached runs; set `True` once for new data):
+
+- `REFRESH_GUIDANCE`: guidance exhibits/images, quarterly supplemental tables and the 10-Q (SEC cache).
+- `REFRESH_EIA`: EIA STEO workbook (`data/raw/eia/`, no API key).
+- `REFRESH_MARKET`: FMP price snapshot (`/profile`; the `/quote` endpoint returns HTTP 402 on the current plan), Treasury yield curve and Damodaran datasets (`data/raw/market/`).
+
+Install the two new notebook dependencies once:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-notebook.txt
+```
+
 ## Automation limits
 
 Section 11 extracts tax and cash-flow disclosures and rebuilds CFO from net
@@ -142,4 +168,4 @@ separate source work.
 
 Debt scope is provider-specific. NWC is an AR + inventory - AP proxy; acquisition balances,
 capital-related payables, and omitted current accounts need review before UFCF.
-There are no forecast or DCF calculations.
+Forecast and DCF calculations are in Sections 12-16, described above.

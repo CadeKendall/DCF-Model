@@ -3,3 +3,5 @@
 jupyterlab
 ipykernel
 pandas
+openpyxl
+xlrd
